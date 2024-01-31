@@ -9,16 +9,13 @@ import (
 	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/kzg"
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
-	"github.com/consensys/gnark/test"
-	"github.com/succinctlabs/gnark-plonky2-verifier/trusted_setup"
 	"github.com/succinctlabs/gnark-plonky2-verifier/types"
 	"github.com/succinctlabs/gnark-plonky2-verifier/variables"
 	"github.com/succinctlabs/gnark-plonky2-verifier/verifier"
@@ -69,7 +66,7 @@ func runBenchmark(plonky2Circuit string, proofSystem string, profileCircuit bool
 	}
 
 	if proofSystem == "plonk" {
-		plonkProof(r1cs, plonky2Circuit, dummy, saveArtifacts)
+		// plonkProof(r1cs, plonky2Circuit, dummy, saveArtifacts)
 	} else if proofSystem == "groth16" {
 		groth16Proof(r1cs, plonky2Circuit, dummy, saveArtifacts)
 	} else {
@@ -77,117 +74,117 @@ func runBenchmark(plonky2Circuit string, proofSystem string, profileCircuit bool
 	}
 }
 
-func plonkProof(r1cs constraint.ConstraintSystem, circuitName string, dummy bool, saveArtifacts bool) {
-	var pk plonk.ProvingKey
-	var vk plonk.VerifyingKey
-	var srs kzg.SRS = kzg.NewSRS(ecc.BN254)
-	var err error
+// func plonkProof(r1cs constraint.ConstraintSystem, circuitName string, dummy bool, saveArtifacts bool) {
+// 	var pk plonk.ProvingKey
+// 	var vk plonk.VerifyingKey
+// 	var srs kzg.SRS = kzg.NewSRS(ecc.BN254)
+// 	var err error
 
-	proofWithPis := variables.DeserializeProofWithPublicInputs(types.ReadProofWithPublicInputs("testdata/" + circuitName + "/proof_with_public_inputs.json"))
-	verifierOnlyCircuitData := variables.DeserializeVerifierOnlyCircuitData(types.ReadVerifierOnlyCircuitData("testdata/" + circuitName + "/verifier_only_circuit_data.json"))
-	assignment := verifier.ExampleVerifierCircuit{
-		Proof:                   proofWithPis.Proof,
-		PublicInputs:            proofWithPis.PublicInputs,
-		VerifierOnlyCircuitData: verifierOnlyCircuitData,
-	}
+// 	proofWithPis := variables.DeserializeProofWithPublicInputs(types.ReadProofWithPublicInputs("testdata/" + circuitName + "/proof_with_public_inputs.json"))
+// 	verifierOnlyCircuitData := variables.DeserializeVerifierOnlyCircuitData(types.ReadVerifierOnlyCircuitData("testdata/" + circuitName + "/verifier_only_circuit_data.json"))
+// 	assignment := verifier.ExampleVerifierCircuit{
+// 		Proof:                   proofWithPis.Proof,
+// 		PublicInputs:            proofWithPis.PublicInputs,
+// 		VerifierOnlyCircuitData: verifierOnlyCircuitData,
+// 	}
 
-	// Don't serialize the circuit for now, since it takes up too much memory
-	// if saveArtifacts {
-	// 	fR1CS, _ := os.Create("circuit")
-	// 	r1cs.WriteTo(fR1CS)
-	// 	fR1CS.Close()
-	// }
+// 	// Don't serialize the circuit for now, since it takes up too much memory
+// 	// if saveArtifacts {
+// 	// 	fR1CS, _ := os.Create("circuit")
+// 	// 	r1cs.WriteTo(fR1CS)
+// 	// 	fR1CS.Close()
+// 	// }
 
-	fmt.Println("Running circuit setup", time.Now())
-	if dummy {
-		fmt.Println("Using test setup")
+// 	fmt.Println("Running circuit setup", time.Now())
+// 	if dummy {
+// 		fmt.Println("Using test setup")
 
-		srs, err = test.NewKZGSRS(r1cs)
+// 		srs, err = test.NewKZGSRS(r1cs)
 
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		fmt.Println("Using real setup")
+// 		if err != nil {
+// 			panic(err)
+// 		}
+// 	} else {
+// 		fmt.Println("Using real setup")
 
-		fileName := "srs_setup"
+// 		fileName := "srs_setup"
 
-		if _, err := os.Stat(fileName); os.IsNotExist(err) {
-			trusted_setup.DownloadAndSaveAztecIgnitionSrs(174, fileName)
-		}
+// 		if _, err := os.Stat(fileName); os.IsNotExist(err) {
+// 			trusted_setup.DownloadAndSaveAztecIgnitionSrs(174, fileName)
+// 		}
 
-		fSRS, err := os.Open(fileName)
+// 		fSRS, err := os.Open(fileName)
 
-		_, err = srs.ReadFrom(fSRS)
+// 		_, err = srs.ReadFrom(fSRS)
 
-		fSRS.Close()
+// 		fSRS.Close()
 
-		if err != nil {
-			panic(err)
-		}
-	}
+// 		if err != nil {
+// 			panic(err)
+// 		}
+// 	}
 
-	pk, vk, err = plonk.Setup(r1cs, srs)
+// 	pk, vk, err = plonk.Setup(r1cs, srs)
 
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		os.Exit(1)
+// 	}
 
-	if saveArtifacts {
-		fPK, _ := os.Create("proving.key")
-		pk.WriteTo(fPK)
-		fPK.Close()
+// 	if saveArtifacts {
+// 		fPK, _ := os.Create("proving.key")
+// 		pk.WriteTo(fPK)
+// 		fPK.Close()
 
-		if vk != nil {
-			fVK, _ := os.Create("verifying.key")
-			vk.WriteTo(fVK)
-			fVK.Close()
-		}
+// 		if vk != nil {
+// 			fVK, _ := os.Create("verifying.key")
+// 			vk.WriteTo(fVK)
+// 			fVK.Close()
+// 		}
 
-		fSolidity, _ := os.Create("proof.sol")
-		err = vk.ExportSolidity(fSolidity)
-	}
+// 		fSolidity, _ := os.Create("proof.sol")
+// 		err = vk.ExportSolidity(fSolidity)
+// 	}
 
-	fmt.Println("Generating witness", time.Now())
-	witness, _ := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
-	publicWitness, _ := witness.Public()
-	if saveArtifacts {
-		fWitness, _ := os.Create("witness")
-		witness.WriteTo(fWitness)
-		fWitness.Close()
-	}
+// 	fmt.Println("Generating witness", time.Now())
+// 	witness, _ := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+// 	publicWitness, _ := witness.Public()
+// 	if saveArtifacts {
+// 		fWitness, _ := os.Create("witness")
+// 		witness.WriteTo(fWitness)
+// 		fWitness.Close()
+// 	}
 
-	fmt.Println("Creating proof", time.Now())
-	proof, err := plonk.Prove(r1cs, pk, witness)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	if saveArtifacts {
-		fProof, _ := os.Create("proof.proof")
-		proof.WriteTo(fProof)
-		fProof.Close()
-	}
+// 	fmt.Println("Creating proof", time.Now())
+// 	proof, err := plonk.Prove(r1cs, pk, witness)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		os.Exit(1)
+// 	}
+// 	if saveArtifacts {
+// 		fProof, _ := os.Create("proof.proof")
+// 		proof.WriteTo(fProof)
+// 		fProof.Close()
+// 	}
 
-	if vk == nil {
-		fmt.Println("vk is nil, means you're using dummy setup and we skip verification of proof")
-		return
-	}
+// 	if vk == nil {
+// 		fmt.Println("vk is nil, means you're using dummy setup and we skip verification of proof")
+// 		return
+// 	}
 
-	fmt.Println("Verifying proof", time.Now())
-	err = plonk.Verify(proof, vk, publicWitness)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+// 	fmt.Println("Verifying proof", time.Now())
+// 	err = plonk.Verify(proof, vk, publicWitness)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		os.Exit(1)
+// 	}
 
-	const fpSize = 4 * 8
-	var buf bytes.Buffer
-	proof.WriteRawTo(&buf)
-	proofBytes := buf.Bytes()
-	fmt.Printf("proofBytes: %v\n", proofBytes)
-}
+// 	const fpSize = 4 * 8
+// 	var buf bytes.Buffer
+// 	proof.WriteRawTo(&buf)
+// 	proofBytes := buf.Bytes()
+// 	fmt.Printf("proofBytes: %v\n", proofBytes)
+// }
 
 func groth16Proof(r1cs constraint.ConstraintSystem, circuitName string, dummy bool, saveArtifacts bool) {
 	var pk groth16.ProvingKey
@@ -246,7 +243,7 @@ func groth16Proof(r1cs constraint.ConstraintSystem, circuitName string, dummy bo
 	}
 
 	fmt.Println("Creating proof", time.Now())
-	proof, err := groth16.Prove(r1cs, pk, witness)
+	proof, err := groth16.Prove(r1cs, pk, witness, backend.WithIcicleAcceleration())
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
